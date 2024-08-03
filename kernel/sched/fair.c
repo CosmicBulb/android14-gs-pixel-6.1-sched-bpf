@@ -55,6 +55,9 @@
 #include "sched.h"
 #include "stats.h"
 #include "autogroup.h"
+//new-add 4
+#include <linux/bpf_sched.h>
+//new-end 4
 
 #include <trace/hooks/sched.h>
 
@@ -7523,15 +7526,16 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int wake_flags)
 	int target_cpu = -1;
 	/* SD_flags and WF_flags share the first nibble */
 	int sd_flag = wake_flags & 0xF;
-
 	if (trace_android_rvh_select_task_rq_fair_enabled() &&
-	    !(sd_flag & SD_BALANCE_FORK))
+	    !(sd_flag & SD_BALANCE_FORK)){
 		sync_entity_load_avg(&p->se);
+    }
+
 	trace_android_rvh_select_task_rq_fair(p, prev_cpu, sd_flag,
 			wake_flags, &target_cpu);
+
 	if (target_cpu >= 0)
 		return target_cpu;
-
 	/*
 	 * required for stable ->cpus_allowed
 	 */
@@ -7735,6 +7739,19 @@ static void check_preempt_wakeup(struct rq *rq, struct task_struct *p, int wake_
 	int cse_is_idle, pse_is_idle;
 	bool ignore = false;
 	bool preempt = false;
+
+
+#ifdef CONFIG_BPF_SCHED
+
+
+	if (bpf_sched_enabled()) {
+		int ret = bpf_sched_cfs_check_preempt_wakeup(current, p);
+		printk("Hello,World 1\n");
+		if(ret == 1){
+			printk("Hello,World 2\n");
+		}
+	}
+#endif
 
 	if (unlikely(se == pse))
 		return;

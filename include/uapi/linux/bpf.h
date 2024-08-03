@@ -978,7 +978,9 @@ enum bpf_prog_type {
 	BPF_PROG_TYPE_LSM,
 	BPF_PROG_TYPE_SK_LOOKUP,
 	BPF_PROG_TYPE_SYSCALL, /* a program that can execute syscalls */
-
+    //new-add
+    BPF_PROG_TYPE_SCHED,
+    //new-end
 	/*
 	 * Until fuse-bpf is upstreamed, this value must be at the end to allow for
 	 * other recently-added upstreamed values to be correct.
@@ -1035,6 +1037,9 @@ enum bpf_attach_type {
 	BPF_PERF_EVENT,
 	BPF_TRACE_KPROBE_MULTI,
 	BPF_LSM_CGROUP,
+    //new-add 1
+    BPF_SCHED,
+    //new-end 1
 	__MAX_BPF_ATTACH_TYPE
 };
 
@@ -5464,6 +5469,13 @@ union bpf_attr {
  *		**-E2BIG** if user-space has tried to publish a sample which is
  *		larger than the size of the ring buffer, or which cannot fit
  *		within a struct bpf_dynptr.
+ *
+ * u64 bpf_sched_entity_to_tgidpid(struct sched_entity *se)
+ *	Description
+ *		Return task's encoded tgid and pid if the sched entity is a task.
+ *	Return
+ *		Tgid and pid encoded as tgid << 32 \| pid, if *se* is a task. (u64)-1 otherwise.
+ *
  */
 #define __BPF_FUNC_MAPPER(FN)		\
 	FN(unspec),			\
@@ -5675,7 +5687,8 @@ union bpf_attr {
 	FN(tcp_raw_check_syncookie_ipv4),	\
 	FN(tcp_raw_check_syncookie_ipv6),	\
 	FN(ktime_get_tai_ns),		\
-	FN(user_ringbuf_drain),		\
+	FN(user_ringbuf_drain),       \
+    FN(sched_entity_to_tgidpid),		\
 	/* */
 
 /* integer value in 'imm' field of BPF_CALL instruction selects which helper
