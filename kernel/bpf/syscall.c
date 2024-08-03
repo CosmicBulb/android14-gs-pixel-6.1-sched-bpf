@@ -35,7 +35,9 @@
 #include <linux/rcupdate_trace.h>
 #include <linux/memcontrol.h>
 #include <linux/trace_events.h>
-
+//new-add 3
+#include <linux/bpf_sched.h>
+//new-end 3
 #include <trace/hooks/syscall_check.h>
 
 #define IS_FD_ARRAY(map) ((map)->map_type == BPF_MAP_TYPE_PERF_EVENT_ARRAY || \
@@ -2334,6 +2336,9 @@ bpf_prog_load_check_attach(enum bpf_prog_type prog_type,
 		case BPF_PROG_TYPE_LSM:
 		case BPF_PROG_TYPE_STRUCT_OPS:
 		case BPF_PROG_TYPE_EXT:
+        //new-add
+        case BPF_PROG_TYPE_SCHED:
+        //new-end
 			break;
 		default:
 			return -EINVAL;
@@ -2457,6 +2462,9 @@ static bool is_perfmon_prog_type(enum bpf_prog_type prog_type)
 	case BPF_PROG_TYPE_LSM:
 	case BPF_PROG_TYPE_STRUCT_OPS: /* has access to struct sock */
 	case BPF_PROG_TYPE_EXT: /* extends any prog */
+    //new-add
+    case BPF_PROG_TYPE_SCHED:
+    //new-end
 		return true;
 	default:
 		return false;
@@ -2988,6 +2996,14 @@ static int bpf_tracing_prog_attach(struct bpf_prog *prog,
 			goto out_put_prog;
 		}
 		break;
+    //new-add
+    case BPF_PROG_TYPE_SCHED:
+        if (prog->expected_attach_type != BPF_SCHED) {
+            err = -EINVAL;
+            goto out_put_prog;
+        }
+        break;
+    //new-end
 	default:
 		err = -EINVAL;
 		goto out_put_prog;
@@ -3110,7 +3126,13 @@ static int bpf_tracing_prog_attach(struct bpf_prog *prog,
 		link = NULL;
 		goto out_unlock;
 	}
-
+//new-add 3
+#ifdef CONFIG_BPF_SCHED
+	if (prog->type == BPF_PROG_TYPE_SCHED){
+		bpf_sched_inc();
+	}
+#endif
+//new-end 3
 	link->tgt_prog = tgt_prog;
 	link->trampoline = tr;
 
@@ -3308,6 +3330,9 @@ static int bpf_raw_tp_link_attach(struct bpf_prog *prog,
 	case BPF_PROG_TYPE_TRACING:
 	case BPF_PROG_TYPE_EXT:
 	case BPF_PROG_TYPE_LSM:
+    //new-add
+    case BPF_PROG_TYPE_SCHED:
+    //new-end
 		if (user_tp_name)
 			/* The attach point for this category of programs
 			 * should be specified via btf_id during program load.
@@ -3468,6 +3493,10 @@ attach_type_to_prog_type(enum bpf_attach_type attach_type)
 		return BPF_PROG_TYPE_XDP;
 	case BPF_LSM_CGROUP:
 		return BPF_PROG_TYPE_LSM;
+    //new-add
+    case BPF_SCHED:
+        return BPF_PROG_TYPE_SCHED;
+    //new-end
 	default:
 		return BPF_PROG_TYPE_UNSPEC;
 	}
@@ -4595,6 +4624,14 @@ static int link_create(union bpf_attr *attr, bpfptr_t uattr)
 					      attr->link_create.target_btf_id,
 					      attr->link_create.tracing.cookie);
 		break;
+    //new-add
+    case BPF_PROG_TYPE_SCHED:
+        ret = bpf_tracing_prog_attach(prog,
+                                      attr->link_create.target_fd,
+                                      attr->link_create.target_btf_id,
+                                      attr->link_create.tracing.cookie);
+        break;
+    //new-end
 	case BPF_PROG_TYPE_LSM:
 	case BPF_PROG_TYPE_TRACING:
 		if (attr->link_create.attach_type != prog->expected_attach_type) {

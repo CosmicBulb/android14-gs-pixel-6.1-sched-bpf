@@ -67,6 +67,7 @@ _COMMON_GKI_MODULES_LIST = [
     "net/rfkill/rfkill.ko",
     "net/tipc/diag.ko",
     "net/tipc/tipc.ko",
+    "lib/test_bpf.ko",
 ]
 
 # Deprecated - Use `get_gki_modules_list` function instead.

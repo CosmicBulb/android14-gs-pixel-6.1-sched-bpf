@@ -113,10 +113,13 @@ static const char * const attach_type_name[] = {
 	[BPF_XDP_DEVMAP]		= "xdp_devmap",
 	[BPF_XDP_CPUMAP]		= "xdp_cpumap",
 	[BPF_XDP]			= "xdp",
-	[BPF_SK_REUSEPORT_SELECT]	= "sk_reuseport_select",
+	[BPF_SK_REUSEPORT_SELECT]	= "sk_prog_type_namereuseport_select",
 	[BPF_SK_REUSEPORT_SELECT_OR_MIGRATE]	= "sk_reuseport_select_or_migrate",
 	[BPF_PERF_EVENT]		= "perf_event",
 	[BPF_TRACE_KPROBE_MULTI]	= "trace_kprobe_multi",
+    //new-add 5
+    [BPF_SCHED]			= "sched",
+    //new-end 5
 };
 
 static const char * const link_type_name[] = {
@@ -200,6 +203,9 @@ static const char * const prog_type_name[] = {
 	[BPF_PROG_TYPE_LSM]			= "lsm",
 	[BPF_PROG_TYPE_SK_LOOKUP]		= "sk_lookup",
 	[BPF_PROG_TYPE_SYSCALL]			= "syscall",
+    //new-add 5
+    [BPF_PROG_TYPE_SCHED]			= "sched",
+    //new-end 5
 };
 
 static int __base_pr(enum libbpf_print_level level, const char *format,
@@ -2951,7 +2957,10 @@ static int bpf_object__finalize_btf(struct bpf_object *obj)
 static bool prog_needs_vmlinux_btf(struct bpf_program *prog)
 {
 	if (prog->type == BPF_PROG_TYPE_STRUCT_OPS ||
-	    prog->type == BPF_PROG_TYPE_LSM)
+	    prog->type == BPF_PROG_TYPE_LSM||
+        //new-add 5
+        prog->type == BPF_PROG_TYPE_SCHED)
+        //new-end 5
 		return true;
 
 	/* BPF_PROG_TYPE_TRACING programs which do not attach to other programs
@@ -8481,6 +8490,9 @@ static int attach_trace(const struct bpf_program *prog, long cookie, struct bpf_
 static int attach_kprobe_multi(const struct bpf_program *prog, long cookie, struct bpf_link **link);
 static int attach_lsm(const struct bpf_program *prog, long cookie, struct bpf_link **link);
 static int attach_iter(const struct bpf_program *prog, long cookie, struct bpf_link **link);
+//new-add 5
+static int attach_sched(const struct bpf_program *prog, long cookie, struct bpf_link **link);
+//new-end 5
 
 static const struct bpf_sec_def section_defs[] = {
 	SEC_DEF("socket",		SOCKET_FILTER, 0, SEC_NONE),
@@ -8564,6 +8576,9 @@ static const struct bpf_sec_def section_defs[] = {
 	SEC_DEF("cgroup/dev",		CGROUP_DEVICE, BPF_CGROUP_DEVICE, SEC_ATTACHABLE_OPT),
 	SEC_DEF("struct_ops+",		STRUCT_OPS, 0, SEC_NONE),
 	SEC_DEF("sk_lookup",		SK_LOOKUP, BPF_SK_LOOKUP, SEC_ATTACHABLE),
+    //new-add 5
+    SEC_DEF("sched/",			SCHED, BPF_SCHED, SEC_ATTACH_BTF, attach_sched),
+    //new-end 5
 };
 
 static size_t custom_sec_def_cnt;
@@ -8947,6 +8962,9 @@ static int bpf_object__collect_st_ops_relos(struct bpf_object *obj,
 #define BTF_TRACE_PREFIX "btf_trace_"
 #define BTF_LSM_PREFIX "bpf_lsm_"
 #define BTF_ITER_PREFIX "bpf_iter_"
+//new-add 5
+#define BTF_SCHED_PREFIX "bpf_sched_"
+//new-end 5
 #define BTF_MAX_NAME_SIZE 128
 
 void btf_get_kernel_prefix_kind(enum bpf_attach_type attach_type,
@@ -8966,6 +8984,12 @@ void btf_get_kernel_prefix_kind(enum bpf_attach_type attach_type,
 		*prefix = BTF_ITER_PREFIX;
 		*kind = BTF_KIND_FUNC;
 		break;
+        //new-add 5
+    case BPF_SCHED:
+        *prefix = BTF_SCHED_PREFIX;
+        *kind = BTF_KIND_FUNC;
+        break;
+        //new-end 5
 	default:
 		*prefix = "";
 		*kind = BTF_KIND_FUNC;
@@ -11396,7 +11420,18 @@ static int attach_iter(const struct bpf_program *prog, long cookie, struct bpf_l
 	*link = bpf_program__attach_iter(prog, NULL);
 	return libbpf_get_error(*link);
 }
+//new-add 5
+struct bpf_link *bpf_program__attach_sched(const struct bpf_program *prog)
+{
+    return bpf_program__attach_btf_id(prog, NULL);
+}
 
+static int attach_sched(const struct bpf_program *prog, long cookie, struct bpf_link **link)
+{
+    *link = bpf_program__attach_sched(prog);
+    return libbpf_get_error(*link);
+}
+//new-end 5
 struct bpf_link *bpf_program__attach(const struct bpf_program *prog)
 {
 	struct bpf_link *link = NULL;

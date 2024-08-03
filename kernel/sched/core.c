@@ -5536,7 +5536,6 @@ void sched_exec(void)
 	trace_android_rvh_sched_exec(&cond);
 	if (cond)
 		return;
-
 	raw_spin_lock_irqsave(&p->pi_lock, flags);
 	dest_cpu = p->sched_class->select_task_rq(p, task_cpu(p), WF_EXEC);
 	if (dest_cpu == smp_processor_id())
